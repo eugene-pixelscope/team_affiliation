@@ -38,7 +38,7 @@ class PRTreIDTeamClassifier(nn.Module):
         else:
             self.global_pooling = GlobalPoolingHead()
         self.team_classifier = BNClassifier(in_dim, num_teams)
-        # self.role_classifier = BNClassifier(in_dim, num_role)
+        self.role_classifier = BNClassifier(in_dim, num_role)
 
     def forward(self, x):
         if self.attention_enable:
@@ -55,18 +55,19 @@ class PRTreIDTeamClassifier(nn.Module):
 
         embedding = self.global_pooling(spatial_features, masks.unsqueeze(1)).flatten(1, 2)  # [N, D]
         team_bn_embedding, team_cls_score = self.team_classifier(embedding)
+        _, role_cls_score = self.self.role_classifier(embedding)
 
-        # feature = embedding if self.training else team_bn_embedding
         feature = embedding if self.training else team_bn_embedding
-        return feature, team_cls_score, F.sigmoid(pixels_cls_scores[:, 0])
+        return feature, team_cls_score, F.sigmoid(pixels_cls_scores[:, 0]), role_cls_score
 
     def _forward(self, x):
         spatial_features = self.backbone(x)
         embedding = self.global_pooling(spatial_features).flatten(1, 2)  # [N, D]
         team_bn_embedding, team_cls_score = self.team_classifier(embedding)
+        _, role_cls_score = self.self.role_classifier(embedding)
 
         feature = embedding if self.training else team_bn_embedding
-        return feature, team_cls_score
+        return feature, team_cls_score, role_cls_score
 
 
 class TwoPhaseTeamClassifier(nn.Module):

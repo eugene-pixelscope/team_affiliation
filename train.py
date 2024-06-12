@@ -28,7 +28,7 @@ def train(model, device, data_loader, loss_funcs, wandb=None):
         # model forward
         img = img.to(device)
         gc = gc.to(device)
-        embedding, team_cls_score, _ = model(img)
+        embedding, team_cls_score, _, _ = model(img)
 
         triplet_loss_fn, identity_loss_fn = loss_funcs
         loss_triplet = triplet_loss_fn(embedding, gc)
@@ -59,7 +59,7 @@ def train_with_attention(model, device, data_loader, loss_funcs, attention_weigh
         gc = gc.to(device)
         msk = msk.to(device)
         # model forward
-        embedding, team_cls_score, attention = model(img)
+        embedding, team_cls_score, attention, _ = model(img)
         triplet_loss_fn, identity_loss_fn, attention_loss_fn = loss_funcs
         loss_triplet = triplet_loss_fn(embedding, gc)
         loss_identity = identity_loss_fn(team_cls_score, gc.long())
