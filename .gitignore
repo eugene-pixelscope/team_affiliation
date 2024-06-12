@@ -4,9 +4,9 @@ wandb/
 save/
 save_bak/
 output/
-demo_image/
 tools/test.py
 main.py
+weights/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
