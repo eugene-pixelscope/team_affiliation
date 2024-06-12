@@ -1,0 +1,12 @@
+# general
+seed: 42
+workers: 8
+dataset_dir: "./datasets"
+
+# train options
+batch_size: 32
+image_size: (256,128)
+
+# model options
+backbone: "ResNet18" # ResNet18 / ResNet34 / ResNet50
+attention_enable: True

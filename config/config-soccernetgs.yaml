@@ -1,0 +1,27 @@
+# general
+seed: 42
+workers: 32
+dataset_dir: "./datasets"
+
+# train options
+batch_size: 512
+image_size: (256,128)
+start_epoch: 0
+epochs: 80
+dataset: "SoccerNetGS"
+
+# model options
+backbone: "ResNet18" # ResNet18 / ResNet34 / ResNet50
+model_path: "save/SoccerNetGS"
+model_type: "prtrei"
+
+# loss options
+learning_rate: 0.0003
+weight_decay: 0.
+
+# etc
+changed_datasets: True
+use_wandb: False
+attention_enable: True
+attention_learnable: False
+attention_weights: 0.7
