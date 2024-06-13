@@ -21,12 +21,6 @@ from utils.model_utils import save_model, load_model
 
 def train(model, device, data_loader, optimizer, loss_funcs, wandb=None):
     loss_epoch = 0
-    # Model freeze except role-classifier
-    for i, (name, param) in enumerate(model.named_parameters()):
-        if 'role_classifier' in name:
-            continue
-        param.requires_grad = False
-
     for step, (img, gc) in enumerate(data_loader):
         optimizer.zero_grad()
         # model forward
@@ -125,7 +119,10 @@ if __name__ == "__main__":
                                   num_teams=n_cat,
                                   num_role=2,
                                   attention_enable=args.attention_enable)
-
+    # Make multi-gpu setting
+    if len(device_ids) > 1:
+        model = DataParallel(model, device_ids=device_ids)
+    model = model.to(device)
     # **********************
     # 3. Loss function and Optimizer setting
     # **********************
@@ -141,16 +138,17 @@ if __name__ == "__main__":
             optimizer.load_state_dict(checkpoint['optimizer'])
             args.start_epoch = checkpoint['epoch'] + 1
 
-    # Make multi-gpu setting
-    if len(device_ids) > 1:
-        model = DataParallel(model, device_ids=device_ids)
-    model = model.to(device)
-
     role_cls_loss = nn.CrossEntropyLoss(label_smoothing=0.1)
 
     # **********************
     # 4. Model training
     # **********************
+    # Model freeze except role-classifier
+    for i, (name, param) in enumerate(model.named_parameters()):
+        if 'role_classifier' in name:
+            continue
+        param.requires_grad = False
+
     total_epoch = args.start_epoch
     print('Start training ...')
     for epoch in tqdm(range(args.start_epoch, args.epochs)):
@@ -164,8 +162,8 @@ if __name__ == "__main__":
             wandb=wandb)
 
         # model save
-        if epoch % 20 == 0:
-            save_model(args, model, optimizer, f'{total_epoch}_with_role')
+        # if epoch % 20 == 0:
+        #     save_model(args, model, optimizer, f'{total_epoch}_with_role')
         total_epoch += 1
     save_model(args, model, optimizer, f'{total_epoch}_with_role')
     print('... End process')

@@ -39,11 +39,11 @@ class HockeyDataset_ForRoleCls(Dataset):
                 img_id = ann['image_id']
                 x,y,w,h = ann['bbox']
                 x1,y1,x2,y2 = x,y,x+w,y+h
-                # FIXME: 임시 작업
-                if img_id < 1010:
-                    continue
-                if img_id > 1015:
-                    break
+                # # FIXME: 임시 작업
+                # if img_id < 1010:
+                #     continue
+                # if img_id > 1100:
+                #     break
                 super_cat_id = int(ann['category_id'])-1
                 if super_cat_id not in self.super_cat:
                     continue

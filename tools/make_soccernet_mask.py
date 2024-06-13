@@ -6,15 +6,7 @@ from pycocotools.coco import COCO
 from PIL import Image
 import cv2
 import json
-# ROOT_PATH = '/workspace/data/SoccerNetGS/gamestate-2024/total'
-# OUTPUT_PATH = '/workspace/data/output'
-# for dir_path in glob(f'{ROOT_PATH}/*'):
-#     dir_name = dir_path.split('/')[-1]
-#     for img_path in glob(f'{dir_path}/img1/*.jpg'):
-#         # print(img_path)
-#         shutil.copyfile(img_path, os.path.join(OUTPUT_PATH, f'{dir_name}.png'))
-#         break
-# db = COCO(anno_path)
+
 def load_image(path, type='PIL'):
     if type == 'PIL':
         _img = Image.open(path).convert('RGB')

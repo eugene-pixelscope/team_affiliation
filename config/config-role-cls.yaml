@@ -4,7 +4,7 @@ workers: 8
 dataset_dir: "./datasets"
 
 # train options
-batch_size: 128
+batch_size: 512
 image_size: (256,128)
 start_epoch: 0
 epochs: 80
@@ -21,7 +21,7 @@ weight_decay: 0.
 
 # etc
 changed_datasets: True
-use_wandb: True
+use_wandb: False
 attention_enable: True
 attention_learnable: True
 attention_weights: 0.7
