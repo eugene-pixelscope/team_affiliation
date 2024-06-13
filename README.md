@@ -21,9 +21,15 @@ pip install -r requirements.txt
 ## Usage
 ### Train
 ```shell
-# example: python3 train.py --config_file config/config-icehockey.yaml
-# example: python3 train.py --config_file config/config-soccernetgs.yaml --checkpoint save/IceHockey/prtrei_resnet18_checkpoint_80.tar
+# example1: python3 train.py --config_file config/config-icehockey.yaml
+# example2: python3 train.py --config_file config/config-soccernetgs.yaml --checkpoint save/IceHockey/prtrei_resnet18_checkpoint_80.tar
 python3 train.py --config_file [CONFIG_FILE_PATH] --checkpoint [CHECKPOINT_PATH] 
+```
+
+### Train (Role-Classifier Layer)
+```shell
+# python3 train_role_cls.py --config_file config/config-role-cls.yaml --checkpoint save/SoccerNetGS/prtrei_resnet18_checkpoint_80.tar
+python3 train_role_cls.py --config_file [CONFIG_FILE_PATH] --checkpoint [CHECKPOINT_PATH]
 ```
 
 ### Eval
@@ -36,4 +42,4 @@ python3 test_with_cluster.py --config_file [CONFIG_FILE_PATH] --checkpoint [CHEC
 ```
 
 ## Soon...
-* Position classification (Player-Goalkeeper)
+* Evaluation code
