@@ -44,6 +44,7 @@ class TrainTransforms:
         transform = [
             v2.Resize(size=size),
             # v2.ColorJitter(brightness=0.5),
+            v2.RandomHorizontalFlip(0.8),
             v2.ToImage(),
             v2.ToDtype(torch.float32, scale=True)
         ]
@@ -54,6 +55,24 @@ class TrainTransforms:
     def __call__(self, x):
         return self.transform(x)
 
+
+class TargetTransforms:
+    def __init__(self, size, mean=None, std=None):
+        if type(size) == int:
+            size = (size, size)
+        transform = [
+            v2.Resize(size=size),
+            v2.ColorJitter(brightness=0.5, hue=0.1),
+            v2.RandomHorizontalFlip(0.8),
+            v2.ToImage(),
+            v2.ToDtype(torch.float32, scale=True)
+        ]
+        if mean and std:
+            transform.append(v2.Normalize(mean=mean, std=std))
+        self.transform = v2.Compose(transform)
+
+    def __call__(self, x):
+        return self.transform(x)
 
 class TransformsForInfer:
     def __init__(self, size, mean=None, std=None):

@@ -190,11 +190,6 @@ if __name__ == "__main__":
                                   num_role=2,
                                   attention_enable=args.attention_enable)
 
-    # Make multi-gpu setting
-    if len(device_ids) > 1:
-        model = DataParallel(model, device_ids=device_ids)
-    model = model.to(device)
-
     # **********************
     # 3. Loss function and Optimizer setting
     # **********************
@@ -209,6 +204,11 @@ if __name__ == "__main__":
             load_model(net=model, checkpoint=checkpoint)
             optimizer.load_state_dict(checkpoint['optimizer'])
             args.start_epoch = checkpoint['epoch'] + 1
+
+    # Make multi-gpu setting
+    if len(device_ids) > 1:
+        model = DataParallel(model, device_ids=device_ids)
+    model = model.to(device)
 
     if args.attention_learnable:
         attention_loss = AttentionLoss()

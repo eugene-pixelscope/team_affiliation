@@ -55,7 +55,7 @@ class PRTreIDTeamClassifier(nn.Module):
 
         embedding = self.global_pooling(spatial_features, masks.unsqueeze(1)).flatten(1, 2)  # [N, D]
         team_bn_embedding, team_cls_score = self.team_classifier(embedding)
-        _, role_cls_score = self.self.role_classifier(embedding)
+        _, role_cls_score = self.role_classifier(embedding)
 
         feature = embedding if self.training else team_bn_embedding
         return feature, team_cls_score, F.sigmoid(pixels_cls_scores[:, 0]), role_cls_score

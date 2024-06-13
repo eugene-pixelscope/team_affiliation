@@ -131,7 +131,7 @@ if __name__ == "__main__":
     elif args.dataset == 'Hockey':
         dataset = HockeyDataset(
             anno_path='datasets/hockey/BRAX001/annotations/instances_BRAX001.json',
-            transform=transform.TransformsForInfer(size=224),
+            transform=transform.TransformsForInfer(size=args.image_size),
         )
     else:
         raise NotImplementedError
