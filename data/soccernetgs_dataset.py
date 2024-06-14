@@ -118,9 +118,6 @@ class SoccerNetGSDataset(Dataset):
                                         img_info['nm_dir'],
                                         img_info['im_dir'],
                                         img_info['file_name'])
-                # img = self.load_image(img_path)
-                # croped = img.crop([x1,y1,x2,y2])
-                # croped.save(os.path.join(self.root_dir,f"{ann['attributes']['team']}.jpg"))
 
                 data.append({
                     'img_path': img_path,

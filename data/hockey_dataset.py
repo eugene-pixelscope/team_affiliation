@@ -29,8 +29,6 @@ class HockeyDataset(Dataset):
 
     def load_data(self, anno_path):
         data = []
-        # with open(anno_path, 'r') as f:
-        #     json_data = json.load(f)
         db = COCO(anno_path)
         failed_img_cnt = 0
         try:
