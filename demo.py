@@ -27,7 +27,9 @@ np.random.seed(seed)
 
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 backbone = resnet.get_resnet('ResNet18')
-model_path = 'weights/best.tar'
+# model_path = 'weights/best.tar'
+# model_path = 'save/IceHockey/prtrei_resnet18_checkpoint_80.tar'
+model_path = 'save/SoccerNetGS/prtrei_resnet18_checkpoint_80.tar'
 model = PRTreIDTeamClassifier(backbone=backbone, num_teams=12, attention_enable=True)
 model = model.to(device)
 

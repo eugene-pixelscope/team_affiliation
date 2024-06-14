@@ -51,7 +51,8 @@ class PRTreIDTeamClassifier(nn.Module):
 
         spatial_features = self.backbone(x)
         pixels_cls_scores = self.attention(spatial_features)  # [N, K, Hf, Wf]
-        masks = F.softmax(pixels_cls_scores, dim=1)[:, 0]
+        # masks = F.softmax(pixels_cls_scores, dim=1)[:, 0]
+        masks = F.sigmoid(pixels_cls_scores[:, 0])
 
         embedding = self.global_pooling(spatial_features, masks.unsqueeze(1)).flatten(1, 2)  # [N, D]
         team_bn_embedding, team_cls_score = self.team_classifier(embedding)

@@ -26,8 +26,8 @@ def inference(loader, model, device, n_cluster=2):
     model.eval()
     labels = []
     pred = []
-    # for step, (x, _, y) in enumerate(loader):
-    for step, (x, y) in enumerate(loader):
+    for step, (x, _, y) in enumerate(loader):
+    # for step, (x, y) in enumerate(loader):
         x = x.to(device)
         with torch.no_grad():
             f, _, _ = model(x)
@@ -81,7 +81,7 @@ if __name__ == "__main__":
     elif args.dataset == 'Hockey':
         dataset = HockeyDataset(
             anno_path='datasets/hockey/BRAX001/annotations/instances_BRAX001.json',
-            transform=transform.TransformsForInfer(size=224),
+            transform=transform.TransformsForInfer(size=args.image_size),
         )
     else:
         raise NotImplementedError

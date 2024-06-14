@@ -39,13 +39,6 @@ class HockeyDataset(Dataset):
                 x,y,w,h = ann['bbox']
                 x1,y1,x2,y2 = x,y,x+w,y+h
                 super_cat_id = ann['category_id']
-                # FIXME: 임시 작업
-                if img_id < 1010:
-                    continue
-                if img_id > 1015:
-                    break
-                if super_cat_id!=1:
-                    continue
                 cat_id = 0
                 img_path = os.path.join(self.root_img_path, db.loadImgs(img_id)[0]['file_name'])
                 self.load_image(img_path)

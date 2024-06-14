@@ -164,7 +164,7 @@ if __name__ == "__main__":
         else:
             dataset = ImageFolder(
                 root="/workspace/Contrastive-Clustering/datasets/SoccerNetGS/gamestate-2024/crop",
-                transform=transform.TrainTransforms(size=(256, 128)))
+                transform=transform.TrainTransforms(size=args.image_size))
         n_cat = 12
     else:
         raise NotImplementedError
@@ -174,7 +174,8 @@ if __name__ == "__main__":
         shuffle=True,
         num_workers=args.workers,
         pin_memory=True,
-        drop_last=True
+        drop_last=True,
+        persistent_workers=True
     )
 
     # **********************
@@ -190,11 +191,6 @@ if __name__ == "__main__":
                                   num_role=2,
                                   attention_enable=args.attention_enable)
 
-    # Make multi-gpu setting
-    if len(device_ids) > 1:
-        model = DataParallel(model, device_ids=device_ids)
-    model = model.to(device)
-
     # **********************
     # 3. Loss function and Optimizer setting
     # **********************
@@ -209,6 +205,11 @@ if __name__ == "__main__":
             load_model(net=model, checkpoint=checkpoint)
             optimizer.load_state_dict(checkpoint['optimizer'])
             args.start_epoch = checkpoint['epoch'] + 1
+
+    # Make multi-gpu setting
+    if len(device_ids) > 1:
+        model = DataParallel(model, device_ids=device_ids)
+    model = model.to(device)
 
     if args.attention_learnable:
         attention_loss = AttentionLoss()
