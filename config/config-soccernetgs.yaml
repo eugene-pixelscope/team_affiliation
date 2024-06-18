@@ -1,6 +1,6 @@
 # general
 seed: 42
-workers: 32
+workers: 16
 dataset_dir: "./datasets"
 
 # train options
@@ -11,7 +11,7 @@ epochs: 80
 dataset: "SoccerNetGS"
 
 # model options
-backbone: "ResNet18" # ResNet18 / ResNet34 / ResNet50
+backbone: "ResNet18" # ResNet18 / ResNet34 / ResNet50 / ShuffleNetV2 / EfficientNetB0
 model_path: "save/SoccerNetGS"
 model_type: "prtrei"
 

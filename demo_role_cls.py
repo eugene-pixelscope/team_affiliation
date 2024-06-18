@@ -1,15 +1,16 @@
 from glob import glob
 import os
-
-import torch
-import cv2
-import numpy as np
+from utils.vis_utils import show_mask_on_image
 
 from modules import resnet, shufflenetv2, efficientnet
 from modules.models import PRTreIDTeamClassifier
 from utils.model_utils import load_model
-from utils.vis_utils import show_mask_on_image
-from sklearn.cluster import KMeans
+import torch.nn.functional as F
+
+import torch
+import cv2
+import numpy as np
+from fast_pytorch_kmeans import KMeans
 
 
 def preprocess(img):
@@ -19,7 +20,6 @@ def preprocess(img):
     result = torch.tensor(img, dtype=torch.float) / 255
     return result
 
-
 seed = 42
 torch.manual_seed(seed)
 torch.cuda.manual_seed_all(seed)
@@ -27,9 +27,7 @@ torch.cuda.manual_seed(seed)
 np.random.seed(seed)
 
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-model_path = 'weights/resnet18_aug:bright05:_NMI:05074_ARI:06174_F:08099_ACC:08931_withoutrole.tar'
-# model_path = 'save/Hockey/prtrei_resnet18_checkpoint_80_with_role.tar'
-
+model_path = 'weights/best_with_role.tar'
 if 'resnet' in os.path.basename(model_path):
     backbone = resnet.get_resnet('ResNet18')
 elif 'shufflenetv2' in os.path.basename(model_path):
@@ -48,7 +46,7 @@ model.eval()
 
 # setting input
 def set_input(dir_path):
-    std_labels = ['1', '2']
+    std_labels = ['1', '2', '3']
     inputs = []
     labels = []
     pathes = glob(os.path.join(dir_path, '*.png'))
@@ -64,10 +62,9 @@ def set_input(dir_path):
         inputs.append(img)
     return inputs, labels
 
-
 inputs, labels = set_input('demo_image')
 pred_labels = []
-feature_tensors = []
+feature_vector = []
 for i, input_tensor in enumerate(inputs):
     with torch.no_grad():
         f, _, mask, role_cls = model(input_tensor)
@@ -79,24 +76,22 @@ for i, input_tensor in enumerate(inputs):
     cv2.imwrite(f'output/{i}_map.jpg', vis_img)
 
     if not bool(role) or bool(role_cls.squeeze(0)[role] < 0.7):
-        feature_tensors.append(f.squeeze(0))
+        feature_vector.append(f.squeeze(0))
         pred_labels.append(0)
     else:
         pred_labels.append(2)
 
-feature_tensors = torch.stack(feature_tensors)
-feature_vectors = feature_tensors.detach().cpu().numpy()
+feature_vector = torch.stack(feature_vector)
 # kmeans
-kmeans = KMeans(n_clusters=2, random_state=seed, max_iter=20, n_init=10)
-kmeans.fit(feature_vectors)
-pred = kmeans.labels_
+kmeans = KMeans(n_clusters=2, mode='euclidean', max_iter=100)
+c = kmeans.fit_predict(feature_vector)
 
+pred = c.detach().cpu().numpy().tolist()
 c_idx = 0
 for i in range(len(pred_labels)):
     if pred_labels[i] == 0:
         pred_labels[i] += pred[c_idx]
         c_idx += 1
-
 print('pred: ', pred_labels)
 print('gt: ', labels)
 print('Demo End')

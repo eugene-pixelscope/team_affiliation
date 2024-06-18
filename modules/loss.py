@@ -8,6 +8,7 @@ class TripletLoss(nn.Module):
         super(TripletLoss, self).__init__()
         self.margin = margin
         self.ranking_loss = nn.MarginRankingLoss(margin=margin)
+        self.cosine_distance = nn.CosineSimilarity(dim=1, eps=1e-6)
 
     def forward(self, inputs, targets):
         """
@@ -34,9 +35,10 @@ class TripletLoss(nn.Module):
         y = torch.ones_like(dist_an)
         return self.ranking_loss(dist_an, dist_ap, y)
 
+    # def compute_dist_matrix(self, inputs):
+    #     return torch.cdist(inputs, inputs, p=2)
     def compute_dist_matrix(self, inputs):
-        return torch.cdist(inputs, inputs, p=2)
-
+        return 1 - self.cosine_distance(inputs, inputs)
 
 class AttentionLoss(nn.Module):
 

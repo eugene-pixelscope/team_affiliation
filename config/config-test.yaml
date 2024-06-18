@@ -8,5 +8,6 @@ batch_size: 32
 image_size: (256,128)
 
 # model options
-backbone: "ResNet18" # ResNet18 / ResNet34 / ResNet50
+backbone: "ResNet18" # ResNet18 / ResNet34 / ResNet50 / ShuffleNetV2 / EfficientNetB0
+
 attention_enable: True

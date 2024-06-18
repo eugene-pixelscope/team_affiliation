@@ -2,6 +2,7 @@ import torch.nn as nn
 import torch
 from torchvision.models.resnet import Bottleneck, BasicBlock, conv1x1
 import torch.utils.model_zoo as model_zoo
+from torch.autograd import Variable
 
 
 model_urls = {
@@ -160,3 +161,10 @@ def resnet34(pretrained=False, **kwargs):
     if pretrained:
         init_pretrained_weights(model, model_url=model_urls['resnet18'])
     return model
+
+
+if __name__ == '__main__':
+    net = get_resnet('ResNet18')
+    x_image = Variable(torch.randn(1, 3, 128, 256))
+    y = net(x_image)
+    print(y.shape)

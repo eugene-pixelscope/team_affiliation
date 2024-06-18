@@ -9,7 +9,7 @@ from torch.utils.data import DataLoader
 from torch.nn.parallel.data_parallel import DataParallel
 from torchvision.datasets import ImageFolder
 
-from modules import transform, resnet
+from modules import transform, resnet, shufflenetv2, efficientnet
 from modules.loss import TripletLoss, AttentionLoss
 from modules.models import PRTreIDTeamClassifier
 
@@ -28,7 +28,7 @@ def train(model, device, data_loader, loss_funcs, wandb=None):
         # model forward
         img = img.to(device)
         gc = gc.to(device)
-        embedding, team_cls_score, _ = model(img)
+        embedding, team_cls_score, _, _ = model(img)
 
         triplet_loss_fn, identity_loss_fn = loss_funcs
         loss_triplet = triplet_loss_fn(embedding, gc)
@@ -59,7 +59,7 @@ def train_with_attention(model, device, data_loader, loss_funcs, attention_weigh
         gc = gc.to(device)
         msk = msk.to(device)
         # model forward
-        embedding, team_cls_score, attention = model(img)
+        embedding, team_cls_score, attention, _ = model(img)
         triplet_loss_fn, identity_loss_fn, attention_loss_fn = loss_funcs
         loss_triplet = triplet_loss_fn(embedding, gc)
         loss_identity = identity_loss_fn(team_cls_score, gc.long())
@@ -173,16 +173,18 @@ if __name__ == "__main__":
         batch_size=args.batch_size,
         shuffle=True,
         num_workers=args.workers,
-        pin_memory=True,
         drop_last=True,
-        persistent_workers=True
     )
 
     # **********************
     # 2. Model construct
     # **********************
-    if 'res' in str(args.backbone).lower():
+    if 'resnet' in str(args.backbone).lower():
         backbone = resnet.get_resnet(args.backbone, pretrained=False)
+    elif 'shufflenet' in str(args.backbone).lower():
+        backbone = shufflenetv2.get_shufflenet(args.backbone)
+    elif 'efficientnet' in str(args.backbone).lower():
+        backbone = efficientnet.get_efficientnet(args.backbone)
     else:
         raise ValueError(f'{args.backbone} is not supported yet.')
 
@@ -219,6 +221,11 @@ if __name__ == "__main__":
     # **********************
     # 4. Model training
     # **********************
+    # Model freeze role-classifier
+    for i, (name, param) in enumerate(model.named_parameters()):
+        if 'role_classifier' in name:
+            param.requires_grad = False
+
     total_epoch = args.start_epoch
     print('Start training ...')
     if args.attention_learnable:

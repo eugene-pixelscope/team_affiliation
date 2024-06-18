@@ -1,8 +1,7 @@
 import copy
 import os
 import torch
-from collections import OrderedDict
-import copy
+
 
 def save_model(args, model, optimizer, current_epoch):
     out = os.path.join(args.model_path,
@@ -25,3 +24,20 @@ def load_model(net, checkpoint, filter_team_classifier=False):
     # model load
     net.load_state_dict(state_dict)
     return net
+
+
+def torch_time_checker(func):
+    def wrapper(*args, **kwargs):
+        starter, ender = torch.cuda.Event(enable_timing=True), torch.cuda.Event(enable_timing=True)
+
+        starter.record()
+        # model inference
+        result = func(*args, **kwargs)
+        ender.record()
+
+        # wait for gpu sync
+        torch.cuda.synchronize()
+        print(f'function time: {round(starter.elapsed_time(ender), 5)}ms')
+        return result
+
+    return wrapper

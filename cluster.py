@@ -1,16 +1,16 @@
 import os
 import argparse
 import numpy as np
-import copy
 
 import torch
 from torch.utils.data import DataLoader
-import torchvision
+from torchvision.datasets import ImageFolder
+from torch.utils.data import Subset
 
 from utils import yaml_config_hook
-from utils.model_utils import load_model
+from utils.model_utils import load_model, torch_time_checker
 
-from modules import resnet, transform
+from modules import resnet, transform, shufflenetv2, efficientnet
 from modules.models import PRTreIDTeamClassifier
 from evaluation import evaluation
 
@@ -19,24 +19,14 @@ from data.ice_hockey_dataset import IceHockeyDataset
 from data.soccernetgs_dataset import SoccerNetGSDataset
 from data.hockey_dataset import HockeyDataset
 
-from fast_pytorch_kmeans import KMeans
+from sklearn.cluster import KMeans, SpectralClustering, Birch
 
 
-def inference(loader, model, device, n_cluster=2):
-    model.eval()
-    labels = []
-    pred = []
-    for step, (x, _, y) in enumerate(loader):
-    # for step, (x, y) in enumerate(loader):
-        x = x.to(device)
-        with torch.no_grad():
-            f, _, _ = model(x)
-        # kmeans
-        kmeans = KMeans(n_clusters=n_cluster, mode='euclidean', verbose=0, max_iter=20)
-        c = kmeans.fit_predict(f)
-        pred.extend(c.detach().cpu().numpy())
-        labels.extend(y.numpy())
-    return np.array(pred), np.array(labels)
+@torch_time_checker
+def inference(batch_tensor, model):
+    with torch.no_grad():
+        f, _, _, _ = model(batch_tensor)
+    return f.detach().cpu().numpy()
 
 
 if __name__ == "__main__":
@@ -44,6 +34,7 @@ if __name__ == "__main__":
     parser.add_argument('--checkpoint', type=str, required=False)
     parser.add_argument('--config_file', type=str, required=True)
     parser.add_argument('--dataset', type=str, required=True, choices=['Hockey', 'SoccerNetGS', 'IceHockey'])
+    parser.add_argument('--use_crop_data', action='store_true')
     args = parser.parse_args()
     config = yaml_config_hook(args.config_file)
     for k, v in config.items():
@@ -79,10 +70,19 @@ if __name__ == "__main__":
         )
         n_cat = 12
     elif args.dataset == 'Hockey':
-        dataset = HockeyDataset(
-            anno_path='datasets/hockey/BRAX001/annotations/instances_BRAX001.json',
-            transform=transform.TransformsForInfer(size=args.image_size),
-        )
+        if not args.use_crop_data:
+            dataset = HockeyDataset(
+                anno_path='datasets/hockey/BRAX001/annotations/instances_BRAX001.json',
+                transform=transform.TransformsForInfer(size=args.image_size),
+            )
+        else:
+            total_dataset = ImageFolder(
+                root='datasets/hockey/BRAX001/crop',
+                transform=transform.TransformsForInfer(size=args.image_size))
+            idx = [i for i in range(len(total_dataset)) if total_dataset.imgs[i][1] != total_dataset.class_to_idx['2']]
+            # build the appropriate subset
+            dataset = Subset(total_dataset, idx)
+            n_cat = 2
     else:
         raise NotImplementedError
     data_loader = DataLoader(
@@ -90,11 +90,15 @@ if __name__ == "__main__":
         batch_size=args.batch_size,
         shuffle=False,
         num_workers=args.workers,
-        drop_last=True
+        drop_last=False
     )
 
-    if 'res' in str(args.backbone).lower():
+    if 'resnet' in str(args.backbone).lower():
         backbone = resnet.get_resnet(args.backbone, pretrained=False)
+    elif 'shufflenet' in str(args.backbone).lower():
+        backbone = shufflenetv2.get_shufflenet(args.backbone)
+    elif 'efficientnet' in str(args.backbone).lower():
+        backbone = efficientnet.get_efficientnet(args.backbone)
     else:
         raise ValueError(f'{args.backbone} is not supported yet.')
 
@@ -106,9 +110,26 @@ if __name__ == "__main__":
     checkpoint = torch.load(model_fp)
     load_model(net=model, checkpoint=checkpoint, filter_team_classifier=True)
     model.to(device)
+    model.eval()
+
+    clustering_engine = KMeans(n_clusters=n_cat, random_state=args.seed, max_iter=20, n_init=10)
+    # clustering_engine = Birch(n_clusters=n_cat)
+    # clustering_engine = SpectralClustering(n_clusters=n_cat,
+    #                                        assign_labels='discretize',
+    #                                        random_state=args.seed)
 
     print("### Creating features from model ###")
-    X, Y = inference(data_loader, model, device, n_cluster=dataset.n_cat)
-    nmi, ari, f, acc = evaluation.evaluate(Y, X)
+    X = []
+    Y = []
+    for step, batch in enumerate(data_loader):
+        x, y = batch[0], batch[-1]
+        x = x.to(device)
+        features = inference(x, model)
+        X.extend(features)
+        Y.extend(y.detach().cpu().numpy())
+
+    clustering_engine.fit(X)
+    pred_cluster = clustering_engine.labels_
+    nmi, ari, f, acc = evaluation.evaluate(Y, pred_cluster)
     print('Model Inference [Triplet]')
     print('NMI = {:.4f} ARI = {:.4f} F = {:.4f} ACC = {:.4f}'.format(nmi, ari, f, acc))

@@ -224,7 +224,7 @@ if __name__ == '__main__':
     data_loader = torch.utils.data.DataLoader(
         dataset,
         batch_size=32,
-        shuffle=True,
+        shuffle=False,
         # drop_last=True,
         num_workers=2,
     )
@@ -234,9 +234,21 @@ if __name__ == '__main__':
         for b in range(B):
             vis_img = img[b].permute(1, 2, 0).detach().cpu().numpy() * 255
             vis_msk_img = msk[b].permute(1, 2, 0).detach().cpu().numpy() * 255
+            # resize external masks to fit feature map size
+            gt_attention_masks = nn.functional.interpolate(
+                msk,
+                [8,4],
+                mode="bilinear",
+                # align_corners=True,
+                # mode="nearest-exact",
+            )
+            gt_attention_masks = gt_attention_masks.squeeze(1)
+
             cv2.imwrite(f'output/{step}_{b}_{int([gc[b]][0])}.png', cv2.cvtColor(vis_img, cv2.COLOR_BGR2RGB))
             cv2.imwrite(f'output/{step}_{b}_{int([gc[b]][0])}_msk.png', cv2.cvtColor(vis_msk_img, cv2.COLOR_BGR2RGB))
-        if step == 2:
-            break
+            cv2.imwrite(f'output/{step}_{b}_{int([gc[b]][0])}_msk_resize.png', cv2.cvtColor(gt_attention_masks[b].unsqueeze(0).permute(1, 2, 0).detach().cpu().numpy() * 255, cv2.COLOR_BGR2RGB))
+        # if step == 2:
+        #     break
+        break
 
 

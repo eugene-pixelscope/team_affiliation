@@ -21,15 +21,21 @@ pip install -r requirements.txt
 ## Usage
 ### Train
 ```shell
-# example: python3 train.py --config_file config/config-icehockey.yaml
-# example: python3 train.py --config_file config/config-soccernetgs.yaml --checkpoint save/IceHockey/prtrei_resnet18_checkpoint_80.tar
+# example1: python3 train.py --config_file config/config-icehockey.yaml
+# example2: python3 train.py --config_file config/config-soccernetgs.yaml --checkpoint save/IceHockey/prtrei_resnet18_checkpoint_80.tar
 python3 train.py --config_file [CONFIG_FILE_PATH] --checkpoint [CHECKPOINT_PATH] 
+```
+
+### Train (Role-Classifier Layer)
+```shell
+# python3 train_role_cls.py --config_file config/config-role-cls.yaml --checkpoint save/SoccerNetGS/prtrei_resnet18_checkpoint_80.tar
+python3 train_role_cls.py --config_file [CONFIG_FILE_PATH] --checkpoint [CHECKPOINT_PATH]
 ```
 
 ### Eval
 Evaluation metrics: NMI, ARI, F, ACC
 ```shell
-# python3 cluster.py --config_file config/config-test.yaml --checkpoint save/IceHockey/prtrei_resnet18_checkpoint_80.tar --dataset Hockey
+# python3 cluster.py --config_file config/config-test.yaml --checkpoint save/Hockey/prtrei_resnet18_checkpoint_80_with_role.tar --dataset Hockey --use_crop_data
 python3 cluster.py --config_file [CONFIG_FILE_PATH] --checkpoint [CHECKPOINT_PATH]  --dataset [DATASET_NAME]
 ```
 
@@ -44,5 +50,3 @@ You have to download weights file from ai-media-team member.
 ```shell
 python3 demo.py
 ```
-## Soon...
-* Position classification (Player-Goalkeeper)
