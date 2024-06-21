@@ -1,6 +1,7 @@
 import copy
 import os
 import torch
+import torch.nn as nn
 
 
 def save_model(args, model, optimizer, current_epoch):
@@ -14,7 +15,7 @@ def load_model(net, checkpoint, filter_team_classifier=False):
     # state_dict = OrderedDict()
     state_dict = copy.deepcopy(net.state_dict())
     for k, v in checkpoint['net'].items():
-        if filter_team_classifier and 'team_classifier' in k:
+        if filter_team_classifier and 'team_classifier.classifier.weight' in k:
             continue
         if 'module' in k:
             name = k[7:]  # remove 'module.' of DataParallel/DistributedDataParallel
@@ -24,6 +25,24 @@ def load_model(net, checkpoint, filter_team_classifier=False):
     # model load
     net.load_state_dict(state_dict)
     return net
+
+
+def freeze_model(net):
+    # Model freeze
+    for name, m in net.named_modules():
+        if 'role_classifier' in name:
+            continue
+        if isinstance(m, nn.BatchNorm2d):
+            m.weight.requires_grad_(False)
+            m.bias.requires_grad_(False)
+            m.affine = False
+            m.track_running_stats = False
+        m.eval()
+    for name, param in net.named_parameters():
+        if 'role_classifier' in name:
+            continue
+        else:
+            param.requires_grad = False
 
 
 def torch_time_checker(func):
