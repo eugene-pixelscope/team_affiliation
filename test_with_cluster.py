@@ -9,6 +9,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from torchmetrics.functional.pairwise import pairwise_cosine_similarity
 import seaborn as sns
+from sklearn.decomposition import PCA
+import pandas as pd
 
 from modules import resnet, transform, shufflenetv2, efficientnet
 from torch.utils.data import DataLoader
@@ -25,16 +27,27 @@ from data.soccernetgs_dataset import SoccerNetGSDataset
 from data.hockey_dataset import HockeyDataset
 
 from sklearn.cluster import KMeans, DBSCAN, SpectralClustering, FeatureAgglomeration, Birch, OPTICS, SpectralBiclustering, AffinityPropagation
+from sklearn_extra.cluster import KMedoids
+from sklearn_extra.cluster import CLARA
+from sklearn.manifold import TSNE
+
+
 import cv2
+from sklearn import preprocessing
 
 
 @torch_time_checker
-def inference(batch_tensor, model, clustering_engine):
+def inference(batch_tensor, model, clustering_engine, dist='euclidean'):
     with torch.no_grad():
         f, _, _, _ = model(batch_tensor)
     # clustering
     features = f.detach().cpu().numpy()
-    clustering_engine.fit(features)
+    if dist == 'euclidean':
+        clustering_engine.fit(features)
+    elif dist == 'cosine':
+        clustering_engine.fit(preprocessing.normalize(features))
+    else:
+        raise ArithmeticError(f'{dist} is not supported')
     return clustering_engine.labels_, f
 
 
@@ -115,21 +128,18 @@ if __name__ == "__main__":
                                   attention_enable=args.attention_enable)
 
     model_fp = os.path.join(args.checkpoint)
-    checkpoint = torch.load(model_fp)
+    checkpoint = torch.load(model_fp, map_location=device)
     load_model(net=model, checkpoint=checkpoint, filter_team_classifier=True)
     model.to(device)
     model.eval()
 
-    clustering_engine = KMeans(n_clusters=2, random_state=seed, max_iter=20, n_init=10)
-    # clustering_engine = Birch(n_clusters=2)
-    # clustering_engine = SpectralClustering(n_clusters=2,
-    #                                        assign_labels='discretize',
-    #                                        random_state=seed)
+    # clustering_engine = KMeans(n_clusters=2, random_state=seed, max_iter=100, n_init=10)
+    clustering_engine = CLARA(n_clusters=2, random_state=seed, max_iter=100)
 
     # Model Inference
     for step, (x, y) in enumerate(data_loader):
         x = x.to(device)
-        labels, features = inference(x, model, clustering_engine=clustering_engine)
+        labels, features = inference(x, model, clustering_engine=clustering_engine, dist='cosine')
         print(labels)
 
         # ***************
@@ -144,6 +154,26 @@ if __name__ == "__main__":
         plt.clf()
         ax = sns.heatmap(out.detach().cpu().numpy(), linewidth=0.5)
         plt.savefig(f'output/{step}/cosine.png')
+
+        # PCA
+        pca = PCA(n_components=2)
+        principalComponents = pca.fit_transform(features.detach().cpu().numpy())
+        centroids = clustering_engine.cluster_centers_
+        centroids_pca = pca.transform(centroids)
+
+        ff = range(pca.n_components_)
+        # Save components to a DataFrame
+        PCA_components = pd.DataFrame(principalComponents)
+        plt.clf()
+        plt.scatter(PCA_components[0], PCA_components[1], alpha=.8, c=labels, cmap='autumn')
+        plt.scatter(centroids_pca[:, 0], centroids_pca[:, 1],
+                    marker='x', s=169, linewidths=3,
+                    color='black', zorder=10, lw=3)
+
+        plt.xlabel('PCA 1')
+        plt.ylabel('PCA 2')
+        plt.title('Clustered Data (PCA visualization)', fontweight='bold')
+        plt.savefig(f'output/{step}/pca.png')
 
         for b in range(B):
             vis_img = x[b].permute(1, 2, 0).detach().cpu().numpy() * 255

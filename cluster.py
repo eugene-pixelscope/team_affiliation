@@ -20,7 +20,8 @@ from data.soccernetgs_dataset import SoccerNetGSDataset
 from data.hockey_dataset import HockeyDataset
 
 from sklearn.cluster import KMeans, SpectralClustering, Birch
-
+from sklearn_extra.cluster import CLARA
+from sklearn import preprocessing
 
 @torch_time_checker
 def inference(batch_tensor, model):
@@ -102,18 +103,28 @@ if __name__ == "__main__":
     else:
         raise ValueError(f'{args.backbone} is not supported yet.')
 
-    model = PRTreIDTeamClassifier(backbone=backbone,
-                                  num_role=2,
-                                  attention_enable=args.attention_enable)
-
     model_fp = os.path.join(args.checkpoint)
-    checkpoint = torch.load(model_fp)
-    load_model(net=model, checkpoint=checkpoint, filter_team_classifier=True)
-    model.to(device)
-    model.eval()
+    if model_fp.endswith('.ts'):
+        import torch_tensorrt
+        model = torch.jit.load(model_fp).to(device)
 
-    clustering_engine = KMeans(n_clusters=n_cat, random_state=args.seed, max_iter=20, n_init=10)
-    # clustering_engine = Birch(n_clusters=n_cat)
+    else:
+        model = PRTreIDTeamClassifier(backbone=backbone,
+                                      num_role=2,
+                                      num_teams=12,
+                                      attention_enable=args.attention_enable)
+
+        checkpoint = torch.load(model_fp, map_location=device)
+        load_model(net=model, checkpoint=checkpoint, filter_team_classifier=True)
+        model.to(device)
+        model.eval()
+
+    # NMI = 0.7331 ARI = 0.7009 F = 0.7814 ACC = 0.8524
+    # clustering_engine = KMeans(n_clusters=n_cat, random_state=args.seed, max_iter=20, n_init=10)
+    # NMI = 0.7285 ARI = 0.7439 F = 0.8090 ACC = 0.8914
+    clustering_engine = CLARA(n_clusters=n_cat, random_state=args.seed)
+
+    # NMI = 0.7484 ARI = 0.7247 F = 0.7975 ACC = 0.8694
     # clustering_engine = SpectralClustering(n_clusters=n_cat,
     #                                        assign_labels='discretize',
     #                                        random_state=args.seed)
@@ -125,7 +136,8 @@ if __name__ == "__main__":
         x, y = batch[0], batch[-1]
         x = x.to(device)
         features = inference(x, model)
-        X.extend(features)
+        X.extend(preprocessing.normalize(features))
+        # X.extend(features)
         Y.extend(y.detach().cpu().numpy())
 
     clustering_engine.fit(X)
