@@ -7,3 +7,4 @@ tqdm
 wandb
 torchmetrics
 seaborn
+scikit-learn-extra
