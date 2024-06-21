@@ -62,7 +62,7 @@ class TrainTransforms:
         transform = [
             v2.Resize(size=size),
             v2.ColorJitter(brightness=0.5),
-            v2.RandomHorizontalFlip(0.8),
+            v2.RandomHorizontalFlip(0.5),
             v2.ToImage(),
             v2.ToDtype(torch.float32, scale=True)
         ]
