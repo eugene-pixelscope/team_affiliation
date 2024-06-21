@@ -38,7 +38,7 @@ class PRTreIDTeamClassifier(nn.Module):
             self.global_pooling = GlobalPoolingHead()
         self.team_classifier = BNClassifier(in_dim, num_teams)
         self.role_classifier = BNClassifier(in_dim, num_role)
-        self.softmax = nn.Softmax(dim=1)
+        # self.softmax = nn.Softmax(dim=1)
 
     def forward(self, x):
         if self.attention_enable:
@@ -52,23 +52,25 @@ class PRTreIDTeamClassifier(nn.Module):
         spatial_features = self.backbone(x)
         pixels_cls_scores = self.attention(spatial_features)  # [N, K, Hf, Wf]
         # masks = F.softmax(pixels_cls_scores, dim=1)[:, 0]
-        masks = F.sigmoid(pixels_cls_scores[:, 0])
+        masks = torch.sigmoid(pixels_cls_scores.squeeze(1))
 
         embedding = self.global_pooling(spatial_features, masks.unsqueeze(1)).flatten(1, 2)  # [N, D]
         team_bn_embedding, team_cls_score = self.team_classifier(embedding)
         _, role_cls_score = self.role_classifier(embedding)
 
         feature = embedding if self.training else team_bn_embedding
-        return feature, team_cls_score, masks, self.softmax(role_cls_score)
+        # return feature, team_cls_score, masks, self.softmax(role_cls_score)
+        return feature, team_cls_score, masks, role_cls_score
 
     def _forward(self, x):
         spatial_features = self.backbone(x)
         embedding = self.global_pooling(spatial_features).flatten(1, 2)  # [N, D]
         team_bn_embedding, team_cls_score = self.team_classifier(embedding)
-        _, role_cls_score = self.self.role_classifier(embedding)
+        _, role_cls_score = self.role_classifier(embedding)
 
         feature = embedding if self.training else team_bn_embedding
-        return feature, team_cls_score, self.softmax(role_cls_score)
+        # return feature, team_cls_score, self.softmax(role_cls_score)
+        return feature, team_cls_score, role_cls_score
 
 
 class TwoPhaseTeamClassifier(nn.Module):
