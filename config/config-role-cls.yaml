@@ -7,8 +7,9 @@ dataset_dir: "./datasets"
 batch_size: 512
 image_size: (256,128)
 start_epoch: 0
-epochs: 80
+epochs: 120
 dataset: "Hockey"
+margin: 0.3
 
 # model options
 backbone: "ResNet18" # ResNet18 / ResNet34 / ResNet50 / ShuffleNetV2 / EfficientNetB0
@@ -16,7 +17,7 @@ model_path: "save/Hockey"
 model_type: "prtrei"
 
 # loss options
-learning_rate: 0.0003
+learning_rate: 0.0001
 weight_decay: 0.
 
 # etc
