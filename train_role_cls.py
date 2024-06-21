@@ -10,13 +10,13 @@ from torch.nn.parallel.data_parallel import DataParallel
 from torchvision.datasets import ImageFolder
 
 from modules import transform, resnet, shufflenetv2, efficientnet
-from modules.loss import TripletLoss, AttentionLoss
+from modules.loss import CrossEntropyLoss
 from modules.models import PRTreIDTeamClassifier
 
 from data.hockey_dataset import HockeyDataset_ForRoleCls
 
 from utils import yaml_config_hook
-from utils.model_utils import save_model, load_model
+from utils.model_utils import save_model, load_model, freeze_model
 
 
 def train(model, device, data_loader, optimizer, loss_funcs, wandb=None):
@@ -38,6 +38,7 @@ def train(model, device, data_loader, optimizer, loss_funcs, wandb=None):
                 'loss': loss.item()
             })
         loss_epoch += loss.item()
+
     return loss_epoch
 
 
@@ -99,7 +100,7 @@ if __name__ == "__main__":
             )
         else:
             dataset = ImageFolder(
-                root='/workspace/Contrastive-Clustering/datasets/hockey/BRAX001_crop',
+                root='datasets/hockey/BRAX001_crop',
                 transform=transform.TargetTransforms(size=args.image_size))
         n_cat = 2
     else:
@@ -128,22 +129,26 @@ if __name__ == "__main__":
         raise ValueError(f'{args.backbone} is not supported yet.')
 
     model = PRTreIDTeamClassifier(backbone=backbone,
-                                  num_teams=n_cat,
+                                  num_teams=12,
                                   num_role=2,
                                   attention_enable=args.attention_enable)
 
     # **********************
     # 3. Loss function and Optimizer setting
     # **********************
-    optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
     if args.checkpoint:
         model_fp = os.path.join(args.checkpoint)
         checkpoint = torch.load(model_fp)
         # model load
         if args.changed_datasets:
             load_model(net=model, checkpoint=checkpoint, filter_team_classifier=True)
+            freeze_model(net=model)
+            optimizer = torch.optim.SGD(filter(lambda p: p.requires_grad, model.parameters()), lr=args.learning_rate, weight_decay=args.weight_decay)
         else:
             load_model(net=model, checkpoint=checkpoint)
+            freeze_model(net=model)
+
+            optimizer = torch.optim.SGD(filter(lambda p: p.requires_grad, model.parameters()), lr=args.learning_rate, weight_decay=args.weight_decay)
             optimizer.load_state_dict(checkpoint['optimizer'])
             args.start_epoch = checkpoint['epoch'] + 1
 
@@ -152,16 +157,11 @@ if __name__ == "__main__":
         model = DataParallel(model, device_ids=device_ids)
     model = model.to(device)
 
-    role_cls_loss = nn.CrossEntropyLoss(label_smoothing=0.1)
+    role_cls_loss = CrossEntropyLoss(label_smooth=True)
 
     # **********************
     # 4. Model training
     # **********************
-    # Model freeze except role-classifier
-    for i, (name, param) in enumerate(model.named_parameters()):
-        if 'role_classifier' in name:
-            continue
-        param.requires_grad = False
 
     total_epoch = args.start_epoch
     print('Start training ...')
@@ -176,7 +176,7 @@ if __name__ == "__main__":
             wandb=wandb)
 
         # model save
-        if epoch % 20 == 0:
+        if epoch % 2 == 0:
             save_model(args, model, optimizer, f'{total_epoch}_with_role')
         total_epoch += 1
     save_model(args, model, optimizer, f'{total_epoch}_with_role')

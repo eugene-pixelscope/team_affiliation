@@ -196,18 +196,52 @@ if __name__ == "__main__":
     # **********************
     # 3. Loss function and Optimizer setting
     # **********************
-    optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
     if args.checkpoint:
         model_fp = os.path.join(args.checkpoint)
         checkpoint = torch.load(model_fp)
         # model load
         if args.changed_datasets:
             load_model(net=model, checkpoint=checkpoint, filter_team_classifier=True)
+            # Model freeze role-classifier
+            for name, m in model.named_modules():
+                if 'role_classifier' in name:
+                    if isinstance(m, nn.BatchNorm2d):
+                        m.weight.requires_grad_(False)
+                        m.bias.requires_grad_(False)
+                        m.affine = False
+                        m.track_running_stats = False
+                    m.eval()
+            for name, param in model.named_parameters():
+                if 'role_classifier' in name:
+                    param.requires_grad = False
+
+            optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()),
+                                         lr=args.learning_rate,
+                                         weight_decay=args.weight_decay)
         else:
             load_model(net=model, checkpoint=checkpoint)
+            # Model freeze role-classifier
+            for name, m in model.named_modules():
+                if 'role_classifier' in name:
+                    if isinstance(m, nn.BatchNorm2d):
+                        m.weight.requires_grad_(False)
+                        m.bias.requires_grad_(False)
+                        m.affine = False
+                        m.track_running_stats = False
+                    m.eval()
+            for name, param in model.named_parameters():
+                if 'role_classifier' in name:
+                    param.requires_grad = False
+
+            optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()),
+                                         lr=args.learning_rate,
+                                         weight_decay=args.weight_decay)
             optimizer.load_state_dict(checkpoint['optimizer'])
             args.start_epoch = checkpoint['epoch'] + 1
-
+    else:
+        optimizer = torch.optim.Adam(model.parameters(),
+                                     lr=args.learning_rate,
+                                     weight_decay=args.weight_decay)
     # Make multi-gpu setting
     if len(device_ids) > 1:
         model = DataParallel(model, device_ids=device_ids)
@@ -215,17 +249,12 @@ if __name__ == "__main__":
 
     if args.attention_learnable:
         attention_loss = AttentionLoss()
-    triplet_loss = TripletLoss()
+    triplet_loss = TripletLoss(margin=args.margin)
     identity_loss = nn.CrossEntropyLoss(label_smoothing=0.1)
 
     # **********************
     # 4. Model training
     # **********************
-    # Model freeze role-classifier
-    for i, (name, param) in enumerate(model.named_parameters()):
-        if 'role_classifier' in name:
-            param.requires_grad = False
-
     total_epoch = args.start_epoch
     print('Start training ...')
     if args.attention_learnable:
